@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CallingApp - Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --wa-header-bg: #005c97;
+      --wa-accent-blue: #34B7F1;
+      --wa-message-out-bg: #dcf8c6;
+      --wa-message-in-bg: #ffffff;
+      --wa-app-bg: #f0f2f5;
+      --wa-chat-bg: #e5ddd5;
+      --wa-icon-color: #f0f2f5;
+      --wa-text-primary: #111b21;
+      --wa-text-secondary: #667781;
+      --wa-border-color: #e9edef;
+      --wa-active-tab-indicator: #ffffff;
+      --wa-button-color: #008069;
+      --wa-link-color: #00a8e8;
+      --wa-shadow: rgba(17, 27, 33, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background-color: #d1d7db; display: flex; justify-content: center; align-items: center; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+
+    #app-container {
+      width: 100%; max-width: 450px; height: 100%; max-height: 950px;
+      background: var(--wa-app-bg); box-shadow: 0 4px 12px var(--wa-shadow);
+      position: relative; overflow: hidden; display: flex; flex-direction: column;
+    }
+    @media (min-width: 451px) { #app-container { border-radius: 12px; height: 95vh; } }
+
+    .view {
+      display: none; flex-direction: column; width: 100%; height: 100%;
+      position: absolute; top: 0; left: 0; background: var(--wa-app-bg); z-index: 10;
+    }
+    .view.active { display: flex; }
+
+    /* Buttons & Inputs */
+    .icon-btn {
+      background: none; border: none; cursor: pointer; color: var(--wa-icon-color);
+      display: flex; align-items: center; justify-content: center;
+      padding: 8px; border-radius: 50%; transition: background 0.2s;
+    }
+    .icon-btn:active { background: rgba(255,255,255,0.1); }
+    .icon-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+    input.input-field {
+      width: 100%; padding: 12px 14px; border: 1px solid var(--wa-border-color);
+      border-radius: 8px; margin-bottom: 12px; font-size: 15px; outline: none; transition: border 0.2s;
+    }
+    input.input-field:focus { border-color: var(--wa-accent-blue); }
+
+    button.primary-btn {
+      width: 100%; padding: 12px; background: var(--wa-button-color); color: white;
+      border: none; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; margin-bottom: 10px;
+    }
+    button.primary-btn:hover { opacity: 0.9; }
+
+    /* Auth View */
+    #auth-view { justify-content: center; padding: 30px; background: white; }
+    #auth-view h1 { text-align: center; color: var(--wa-button-color); margin-bottom: 30px; font-size: 28px; }
+    .auth-form { display: none; flex-direction: column; }
+    .auth-form.active { display: flex; }
+    .auth-switch { text-align: center; margin-top: 15px; font-size: 14px; color: var(--wa-text-secondary); }
+    .auth-switch span { color: var(--wa-link-color); cursor: pointer; font-weight: 500; }
+    .error-msg { color: #e91e63; font-size: 13px; margin-bottom: 10px; text-align: center; min-height: 18px; }
+
+    /* Main View */
+    .main-header { background: var(--wa-header-bg); color: white; display: flex; flex-direction: column; z-index: 20; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; padding: 15px; }
+    .header-top h1 { font-size: 20px; font-weight: 500; }
+    .header-actions { display: flex; gap: 5px; }
+    
+    .header-nav { display: flex; }
+    .nav-tab {
+      flex: 1; text-align: center; padding: 12px 0; font-weight: 500; font-size: 14px;
+      color: rgba(255,255,255,0.7); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;
+    }
+    .nav-tab.active { color: white; border-bottom: 3px solid var(--wa-active-tab-indicator); }
+    .badge { background: #f44336; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; display: none; }
+    .badge.visible { display: inline-block; }
+
+    #main-content { flex: 1; overflow-y: auto; background: white; }
+    .content-panel { display: none; flex-direction: column; }
+    .content-panel.active { display: flex; }
+
+    /* List Items */
+    .list-item { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; transition: background 0.2s; }
+    .list-item:hover { background: var(--wa-app-bg); }
+    .list-item:not(:last-child) .list-details { border-bottom: 1px solid var(--wa-border-color); }
+    
+    .avatar {
+      width: 48px; height: 48px; border-radius: 50%; background: #ccc; display: flex; justify-content: center; 
+      align-items: center; font-size: 20px; color: white; margin-right: 15px; flex-shrink: 0; text-transform: uppercase; font-weight: bold; position: relative;
+    }
+    .online-indicator {
+      width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%;
+      position: absolute; bottom: 2px; right: 2px; border: 2px solid white; display: none;
+    }
+    .online-indicator.active { display: block; }
+    
+    .list-details { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: 12px; }
+    .list-name { font-size: 16px; color: var(--wa-text-primary); font-weight: 500; }
+    .list-subtext { font-size: 14px; color: var(--wa-text-secondary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;}
+    .list-actions { display: flex; gap: 10px; margin-top: 5px; }
+    .list-actions button { padding: 6px 12px; border-radius: 5px; border: none; cursor: pointer; font-size: 12px; font-weight: 500;}
+    .btn-accept { background: var(--wa-button-color); color: white; }
+    .btn-reject { background: #f44336; color: white; }
+
+    /* Chat View */
+    .chat-header { background: var(--wa-header-bg); color: white; display: flex; align-items: center; padding: 10px 5px; z-index: 20; }
+    .chat-header-info { display: flex; align-items: center; flex: 1; cursor: pointer; }
+    .chat-header .avatar { width: 36px; height: 36px; font-size: 16px; margin: 0 10px 0 0; }
+    
+    #chat-messages {
+      flex: 1; background-color: var(--wa-chat-bg);
+      background-image: url("https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg");
+      background-size: cover; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+    }
+    
+    .message-bubble {
+      max-width: 75%; padding: 8px 12px; font-size: 14.5px; line-height: 1.4;
+      position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); word-wrap: break-word; min-width: 80px;
+    }
+    .message-bubble a { color: var(--wa-link-color); text-decoration: none; }
+    .message-bubble a:hover { text-decoration: underline; }
+    .message-received { background: var(--wa-message-in-bg); align-self: flex-start; border-radius: 0 8px 8px 8px; }
+    .message-sent { background: var(--wa-message-out-bg); align-self: flex-end; border-radius: 8px 0 8px 8px; }
+    .msg-time { font-size: 10px; color: #999; float: right; margin-top: 5px; margin-left: 10px; }
+
+    #chat-input-container { background: #f0f0f0; padding: 10px; display: flex; align-items: center; gap: 8px; }
+    #chat-input { flex: 1; padding: 12px 15px; border-radius: 24px; border: none; outline: none; font-size: 15px; }
+    
+    .circle-btn {
+      background: var(--wa-button-color); color: white; border-radius: 50%;
+      width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; border: none; cursor: pointer;
+    }
+    .attach-btn { background: transparent; color: var(--wa-text-secondary); }
+    .attach-btn:hover { background: #e0e0e0; color: #f44336; } 
+
+    /* Modals */
+    .modal {
+      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: white; width: 100%; max-width: 320px; border-radius: 12px;
+      padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-content h2 { margin-bottom: 15px; font-size: 20px; color: var(--wa-text-primary); text-align: center; }
+    .modal-content p.desc { font-size: 14px; color: var(--wa-text-secondary); margin-bottom: 15px; text-align: center; }
+    .modal-btn-group { display: flex; gap: 10px; margin-top: 15px; }
+    .btn-cancel { background: #f0f2f5; color: var(--wa-text-primary); margin-bottom: 0 !important; }
+    
+    .action-list button {
+      width: 100%; text-align: left; padding: 15px; background: none; border: none;
+      font-size: 16px; border-bottom: 1px solid #eee; cursor: pointer; color: var(--wa-text-primary);
+    }
+    .action-list button:hover { background: #f9f9f9; }
+    .action-list .danger { color: #f44336; font-weight: 500; }
+    .action-list .warning { color: #ff9800; font-weight: 500;}
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- ================= AUTH VIEW ================= -->
+  <div id="auth-view" class="view active">
+    <h1>CallingApp</h1>
+    <div id="login-form" class="auth-form active">
+      <div id="login-error" class="error-msg"></div>
+      <input type="email" id="login-email" class="input-field" placeholder="Email">
+      <input type="password" id="login-password" class="input-field" placeholder="Password">
+      <button class="primary-btn" onclick="appAuth.login()">Log In</button>
+      <div class="auth-switch">Don't have an account? <span onclick="ui.switchAuth('signup')">Sign up</span></div>
+    </div>
+    <div id="signup-form" class="auth-form">
+      <div id="signup-error" class="error-msg"></div>
+      <input type="email" id="signup-email" class="input-field" placeholder="Email">
+      <input type="password" id="signup-password" class="input-field" placeholder="Password">
+      <button class="primary-btn" onclick="appAuth.signup()">Sign Up</button>
+      <div class="auth-switch">Already have an account? <span onclick="ui.switchAuth('login')">Log in</span></div>
+    </div>
+  </div>
+
+  <!-- ================= MAIN APP VIEW ================= -->
+  <div id="main-view" class="view">
+    <header class="main-header">
+      <div class="header-top">
+        <h1>CallingApp</h1>
+        <div class="header-actions">
+          <button class="icon-btn" onclick="ui.showModal('add-friend-modal')">
+            <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="ui.showModal('profile-view-modal')">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="header-nav">
+        <div id="nav-home" class="nav-tab active" onclick="ui.switchTab('home')">Chats <span id="badge-chats" class="badge">0</span></div>
+        <div id="nav-notifications" class="nav-tab" onclick="ui.switchTab('notifications')">Updates <span id="badge-updates" class="badge">0</span></div>
+      </div>
+    </header>
+    <main id="main-content">
+      <div id="home-content" class="content-panel active"></div>
+      <div id="notifications-content" class="content-panel"></div>
+    </main>
+  </div>
+
+  <!-- ================= CHAT VIEW ================= -->
+  <div id="chat-view" class="view">
+    <header class="chat-header">
+      <button class="icon-btn" onclick="messaging.closeChat()">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div class="chat-header-info">
+        <div class="avatar" id="chat-header-avatar">U</div>
+        <div>
+          <div style="font-weight: 500; font-size: 16px;" id="chat-header-name">Name</div>
+          <div style="font-size: 11px; opacity: 0.8;" id="chat-header-status">Offline</div>
+        </div>
+      </div>
+      <!-- 3 Dots Menu (Delete & Block) -->
+      <button class="icon-btn" onclick="ui.showModal('chat-options-modal')">
+        <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      </button>
+    </header>
+    <div id="chat-messages"></div>
+    <div id="chat-input-container">
+      <button class="circle-btn attach-btn" title="Share Location" onclick="messaging.sendLocation()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </button>
+      <input type="text" id="chat-input" placeholder="Type a message..." oninput="messaging.handleTyping()" onblur="messaging.stopTyping()">
+      <button class="circle-btn" onclick="messaging.sendMessage()">
+        <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+  
+  <!-- Chat Options Modal (Delete and Block Options) -->
+  <div id="chat-options-modal" class="modal">
+    <div class="modal-content action-list" style="padding: 0; overflow: hidden;">
+      <h2 style="padding: 20px 0 10px; margin:0;">Chat Options</h2>
+      <button class="warning" onclick="messaging.clearChatHistory()">🗑️ Clear Chat History</button>
+      <button class="danger" onclick="friends.deleteContact()">❌ Delete User</button>
+      <button class="danger" onclick="friends.blockContact()">🚫 Block User</button>
+      <button onclick="ui.hideModal('chat-options-modal')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Profile Setup Modal -->
+  <div id="profile-setup-modal" class="modal">
+    <div class="modal-content">
+      <h2>Set Up Profile</h2>
+      <p class="desc">Choose a display name and unique username.</p>
+      <div id="setup-error" class="error-msg"></div>
+      <input type="text" id="setup-name" class="input-field" placeholder="Display Name">
+      <input type="text" id="setup-username" class="input-field" placeholder="Username (e.g. john_doe)" oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')">
+      <button class="primary-btn" onclick="profile.saveSetup()">Save Profile</button>
+    </div>
+  </div>
+
+  <!-- Add Friend Modal -->
+  <div id="add-friend-modal" class="modal">
+    <div class="modal-content">
+      <h2>Add Friend</h2>
+      <p class="desc">Enter your friend's exact username.</p>
+      <div id="add-friend-error" class="error-msg"></div>
+      <input type="text" id="add-username" class="input-field" placeholder="Username">
+      <div class="modal-btn-group">
+        <button class="primary-btn btn-cancel" onclick="ui.hideModal('add-friend-modal')">Cancel</button>
+        <button class="primary-btn" onclick="friends.sendRequest()">Send Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile View Modal -->
+  <div id="profile-view-modal" class="modal">
+    <div class="modal-content" style="align-items: center;">
+      <div class="avatar" id="my-avatar" style="width: 80px; height: 80px; font-size: 30px; margin-bottom: 10px;"></div>
+      <h2 id="my-name" style="margin-bottom: 5px;">Name</h2>
+      <p id="my-username" style="color: var(--wa-text-secondary); margin-bottom: 20px;">@username</p>
+      
+      <button class="primary-btn" style="background: #34B7F1;" onclick="ui.showModal('blocked-users-modal'); friends.loadBlockedUsers(); ui.hideModal('profile-view-modal');">🛡️ Blocked Users</button>
+      <button class="primary-btn" style="background: #f44336;" onclick="appAuth.logout()">Log Out</button>
+      <button class="primary-btn" style="background: #b71c1c;" onclick="appAuth.deleteAccount()">Delete Account</button>
+      <button class="primary-btn btn-cancel" onclick="ui.hideModal('profile-view-modal')">Close</button>
+    </div>
+  </div>
+
+  <!-- Blocked Users Modal -->
+  <div id="blocked-users-modal" class="modal">
+    <div class="modal-content">
+      <h2>Blocked Users</h2>
+      <p class="desc">Tap to unblock a user</p>
+      <div id="blocked-users-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
+        <!-- Populated via JS -->
+      </div>
+      <button class="primary-btn btn-cancel" onclick="ui.hideModal('blocked-users-modal'); ui.showModal('profile-view-modal');">Back</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<!-- Application Logic -->
+<script>
+  // --- Firebase Configuration ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyAV2U9pg9IJEnr3Iz6IByB73fUNYuvSg5s",
+    authDomain: "miss-call-a8b06.firebaseapp.com",
+    databaseURL: "https://miss-call-a8b06-default-rtdb.firebaseio.com",
+    projectId: "miss-call-a8b06",
+    messagingSenderId: "188100214257",
+    appId: "1:188100214257:web:780a2859e52554255bd850"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
+
+  let currentUser = null;
+  let currentProfile = null;
+  let currentChatPartner = null;
+  let presenceRef = null;
+  let typingTimeout = null;
+  let partnerStatusStr = 'Offline';
+
+  // --- UI Helpers ---
+  const ui = {
+    showView: (id) => {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    },
+    switchAuth: (type) => {
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(`${type}-form`).classList.add('active');
+    },
+    switchTab: (tab) => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(`nav-${tab}`).classList.add('active');
+      document.getElementById(`${tab}-content`).classList.add('active');
+    },
+    showModal: (id) => document.getElementById(id).classList.add('active'),
+    hideModal: (id) => {
+      document.getElementById(id).classList.remove('active');
+      const err = document.getElementById(id.replace('-modal', '-error'));
+      if(err) err.innerText = '';
+    },
+    getAvatarColor: (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      return `hsl(${hash % 360}, 65%, 45%)`;
+    },
+    formatTime: (timestamp) => {
+      return new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    },
+    linkify: (text) => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return text.replace(urlRegex, function(url) {
+        return '<a href="' + url + '" target="_blank">' + url + '</a>';
+      });
+    }
+  };
+
+  // --- Authentication & Presence ---
+  const appAuth = {
+    login: async () => {
+      try { await auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value); }
+      catch(e) { document.getElementById('login-error').innerText = e.message; }
+    },
+    signup: async () => {
+      try { await auth.createUserWithEmailAndPassword(document.getElementById('signup-email').value, document.getElementById('signup-password').value); }
+      catch(e) { document.getElementById('signup-error').innerText = e.message; }
+    },
+    logout: () => { 
+      if(presenceRef) presenceRef.remove();
+      auth.signOut(); ui.hideModal('profile-view-modal'); 
+    },
+    deleteAccount: async () => {
+      if(confirm("Are you sure you want to completely delete your account? This action cannot be undone.")) {
+        if(currentProfile) await db.ref(`usernames/${currentProfile.username}`).remove();
+        await db.ref(`users/${currentUser.uid}`).remove();
+        await auth.currentUser.delete();
+        alert("Account Deleted Successfully.");
+        ui.hideModal('profile-view-modal');
+      }
+    }
+  };
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      
+      const myConnectionsRef = db.ref(`status/${user.uid}`);
+      db.ref('.info/connected').on('value', snap => {
+        if (snap.val() === true) {
+          presenceRef = myConnectionsRef;
+          presenceRef.set(true);
+          presenceRef.onDisconnect().remove();
+        }
+      });
+
+      db.ref(`users/${user.uid}`).on('value', snap => {
+        const data = snap.val();
+        if (!data || !data.username) {
+          ui.showView('main-view'); ui.showModal('profile-setup-modal');
+        } else {
+          currentProfile = data; ui.hideModal('profile-setup-modal'); ui.showView('main-view');
+          profile.renderMyProfile(); friends.listen();
+        }
+      });
+    } else {
+      currentUser = null; currentProfile = null; ui.showView('auth-view');
+    }
+  });
+
+  // --- Profile Management ---
+  const profile = {
+    saveSetup: async () => {
+      const name = document.getElementById('setup-name').value.trim();
+      const username = document.getElementById('setup-username').value.trim();
+      const err = document.getElementById('setup-error');
+      if(!name || !username) return err.innerText = "All fields required.";
+      const snap = await db.ref(`usernames/${username}`).once('value');
+      if(snap.exists()) return err.innerText = "Username already taken.";
+      await db.ref(`usernames/${username}`).set(currentUser.uid);
+      await db.ref(`users/${currentUser.uid}`).set({ name, username });
+    },
+    renderMyProfile: () => {
+      document.getElementById('my-avatar').innerText = currentProfile.name.charAt(0).toUpperCase();
+      document.getElementById('my-avatar').style.background = ui.getAvatarColor(currentProfile.username);
+      document.getElementById('my-name').innerText = currentProfile.name;
+      document.getElementById('my-username').innerText = '@' + currentProfile.username;
+    }
+  };
+
+  // --- Friend & Block System ---
+  const friends = {
+    sendRequest: async () => {
+      const username = document.getElementById('add-username').value.trim().toLowerCase();
+      const err = document.getElementById('add-friend-error');
+      if(!username) return err.innerText = "Enter username";
+      if(username === currentProfile.username) return err.innerText = "Cannot add yourself";
+
+      const snap = await db.ref(`usernames/${username}`).once('value');
+      if(!snap.exists()) return err.innerText = "User not found";
+
+      const targetUid = snap.val();
+      
+      const blockedSnap = await db.ref(`blocked/${targetUid}/${currentUser.uid}`).once('value');
+      if(blockedSnap.exists()) return err.innerText = "Cannot send request.";
+
+      await db.ref(`requests/${targetUid}/${currentUser.uid}`).set({ uid: currentUser.uid, name: currentProfile.name, username: currentProfile.username });
+      ui.hideModal('add-friend-modal'); alert('Request sent!');
+    },
+    
+    listen: () => {
+      db.ref(`requests/${currentUser.uid}`).on('value', snap => {
+        const container = document.getElementById('notifications-content');
+        container.innerHTML = ''; let count = 0;
+        snap.forEach(child => {
+          count++; const req = child.val();
+          container.innerHTML += `
+            <div class="list-item">
+              <div class="avatar" style="background:${ui.getAvatarColor(req.username)}">${req.name.charAt(0).toUpperCase()}</div>
+              <div class="list-details">
+                <div class="list-name">${req.name}</div>
+                <div class="list-subtext">@${req.username} wants to connect</div>
+                <div class="list-actions">
+                  <button class="btn-accept" onclick="friends.accept('${req.uid}', '${req.name}', '${req.username}')">Accept</button>
+                  <button class="btn-reject" onclick="friends.reject('${req.uid}')">Reject</button>
+                </div>
+              </div>
+            </div>`;
+        });
+        document.getElementById('badge-updates').innerText = count;
+        document.getElementById('badge-updates').style.display = count > 0 ? 'inline-block' : 'none';
+        if(count === 0) container.innerHTML = '<p style="text-align:center; padding: 20px; color:gray;">No new updates.</p>';
+      });
+
+      db.ref(`contacts/${currentUser.uid}`).on('value', snap => {
+        const container = document.getElementById('home-content');
+        container.innerHTML = ''; let count = 0;
+        if(!snap.exists()){ container.innerHTML = '<p style="text-align:center; padding: 20px; color:gray;">No chats yet. Add a friend!</p>'; return; }
+        
+        snap.forEach(child => {
+          count++; const contact = child.val();
+          container.innerHTML += `
+            <div class="list-item" onclick="messaging.openChat('${child.key}', '${contact.name}', '${contact.username}')">
+              <div class="avatar" style="background:${ui.getAvatarColor(contact.username)}">
+                ${contact.name.charAt(0).toUpperCase()}
+                <div class="online-indicator" id="online-${child.key}"></div>
+              </div>
+              <div class="list-details">
+                <div class="list-name">${contact.name}</div>
+                <div class="list-subtext">@${contact.username}</div>
+              </div>
+            </div>`;
+            
+          db.ref(`status/${child.key}`).on('value', s => {
+            const ind = document.getElementById(`online-${child.key}`);
+            if(ind) { if(s.val()) ind.classList.add('active'); else ind.classList.remove('active'); }
+          });
+        });
+        document.getElementById('badge-chats').innerText = count;
+        document.getElementById('badge-chats').style.display = count > 0 ? 'inline-block' : 'none';
+      });
+    },
+
+    accept: async (uid, name, username) => {
+      await db.ref(`contacts/${currentUser.uid}/${uid}`).set({ name, username });
+      await db.ref(`contacts/${uid}/${currentUser.uid}`).set({ name: currentProfile.name, username: currentProfile.username });
+      await db.ref(`requests/${currentUser.uid}/${uid}`).remove();
+    },
+    reject: async (uid) => { await db.ref(`requests/${currentUser.uid}/${uid}`).remove(); },
+    
+    // --- Delete & Block Actions ---
+    deleteContact: async () => {
+      if(!currentChatPartner) return;
+      if(confirm(`Are you sure you want to delete ${currentChatPartner.name} from your contacts?`)) {
+        await db.ref(`contacts/${currentUser.uid}/${currentChatPartner.uid}`).remove();
+        ui.hideModal('chat-options-modal'); messaging.closeChat();
+      }
+    },
+
+    blockContact: async () => {
+      if(!currentChatPartner) return;
+      if(confirm(`Are you sure you want to Block ${currentChatPartner.name}? They won't be able to message you.`)) {
+        await db.ref(`blocked/${currentUser.uid}/${currentChatPartner.uid}`).set(currentChatPartner.name);
+        await db.ref(`contacts/${currentUser.uid}/${currentChatPartner.uid}`).remove();
+        ui.hideModal('chat-options-modal'); messaging.closeChat();
+      }
+    },
+
+    loadBlockedUsers: () => {
+      db.ref(`blocked/${currentUser.uid}`).once('value', snap => {
+        const list = document.getElementById('blocked-users-list');
+        list.innerHTML = '';
+        if(!snap.exists()){
+          list.innerHTML = '<p style="text-align:center; color:gray; font-size:14px;">No blocked users.</p>';
+          return;
+        }
+        snap.forEach(child => {
+          const blockedUid = child.key;
+          const blockedName = child.val();
+          list.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
+              <span style="font-weight:500;">${blockedName}</span>
+              <button style="background:#4CAF50; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" 
+                      onclick="friends.unblockUser('${blockedUid}')">Unblock</button>
+            </div>`;
+        });
+      });
+    },
+
+    unblockUser: async (uid) => {
+      if(confirm("Unblock this user?")) {
+        await db.ref(`blocked/${currentUser.uid}/${uid}`).remove();
+        friends.loadBlockedUsers(); // reload list
+        alert("User unblocked!");
+      }
+    }
+  };
+
+  // --- Messaging ---
+  const messaging = {
+    getChatId: (uid1, uid2) => (uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`),
+    
+    closeChat: () => {
+      if(currentChatPartner) {
+        const chatId = messaging.getChatId(currentUser.uid, currentChatPartner.uid);
+        db.ref(`status/${currentChatPartner.uid}`).off();
+        db.ref(`typing/${chatId}/${currentChatPartner.uid}`).off();
+        db.ref(`messages/${chatId}`).off();
+      }
+      currentChatPartner = null;
+      ui.showView('main-view');
+    },
+
+    openChat: (uid, name, username) => {
+      currentChatPartner = { uid, name, username };
+      document.getElementById('chat-header-avatar').innerText = name.charAt(0).toUpperCase();
+      document.getElementById('chat-header-avatar').style.background = ui.getAvatarColor(username);
+      document.getElementById('chat-header-name').innerText = name;
+      const statusEl = document.getElementById('chat-header-status');
+      
+      const chatId = messaging.getChatId(currentUser.uid, uid);
+
+      db.ref(`status/${uid}`).on('value', snap => {
+         partnerStatusStr = snap.val() ? 'Online' : 'Offline';
+         statusEl.innerText = partnerStatusStr;
+         statusEl.style.color = snap.val() ? '#4CAF50' : 'rgba(255,255,255,0.8)';
+      });
+
+      db.ref(`typing/${chatId}/${uid}`).on('value', snap => {
+         if(snap.val()) {
+            statusEl.innerText = 'typing...';
+            statusEl.style.color = '#34B7F1';
+         } else {
+            statusEl.innerText = partnerStatusStr;
+            statusEl.style.color = partnerStatusStr === 'Online' ? '#4CAF50' : 'rgba(255,255,255,0.8)';
+         }
+      });
+
+      db.ref(`messages/${chatId}`).off();
+      db.ref(`messages/${chatId}`).on('value', snap => {
+        const box = document.getElementById('chat-messages');
+        box.innerHTML = '';
+        snap.forEach(child => {
+          const msg = child.val();
+          const cls = msg.sender === currentUser.uid ? 'message-sent' : 'message-received';
+          const linkedText = ui.linkify(msg.text);
+          box.innerHTML += `<div class="message-bubble ${cls}">${linkedText} <span class="msg-time">${ui.formatTime(msg.timestamp)}</span></div>`;
+        });
+        box.scrollTop = box.scrollHeight;
+      });
+      
+      ui.showView('chat-view');
+    },
+
+    handleTyping: () => {
+      if(!currentChatPartner) return;
+      const chatId = messaging.getChatId(currentUser.uid, currentChatPartner.uid);
+      db.ref(`typing/${chatId}/${currentUser.uid}`).set(true);
+      
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        db.ref(`typing/${chatId}/${currentUser.uid}`).set(false);
+      }, 2000);
+    },
+
+    stopTyping: () => {
+      if(!currentChatPartner) return;
+      const chatId = messaging.getChatId(currentUser.uid, currentChatPartner.uid);
+      db.ref(`typing/${chatId}/${currentUser.uid}`).set(false);
+    },
+
+    sendMessage: async (customText = null) => {
+      if(!currentChatPartner) return;
+
+      const blockedMe = await db.ref(`blocked/${currentChatPartner.uid}/${currentUser.uid}`).once('value');
+      if(blockedMe.exists()) { alert("Message failed: You have been blocked by this user."); return; }
+
+      let text = customText;
+      const input = document.getElementById('chat-input');
+      
+      if(!text) {
+        text = input.value.trim();
+        if(!text) return;
+        input.value = '';
+        messaging.stopTyping();
+      }
+
+      const chatId = messaging.getChatId(currentUser.uid, currentChatPartner.uid);
+      await db.ref(`messages/${chatId}`).push({
+        sender: currentUser.uid, timestamp: Date.now(), text: text
+      });
+    },
+
+    sendLocation: () => {
+      if(!navigator.geolocation) return alert('Geolocation is not supported by your browser.');
+      
+      if(confirm("Share your current location?")) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const mapLink = `📍 Location: https://maps.google.com/?q=${lat},${lon}`;
+          messaging.sendMessage(mapLink);
+        }, error => {
+          alert('Could not get your location. Please check your device permissions.');
+        });
+      }
+    },
+
+    clearChatHistory: async () => {
+       if(!currentChatPartner) return;
+       if(confirm("Delete all messages in this chat? This cannot be undone.")) {
+         const chatId = messaging.getChatId(currentUser.uid, currentChatPartner.uid);
+         await db.ref(`messages/${chatId}`).remove();
+         ui.hideModal('chat-options-modal');
+       }
+    }
+  };
+
+  document.getElementById('chat-input').addEventListener('keypress', (e) => {
+    if(e.key === 'Enter') messaging.sendMessage();
+  });
+
+</script>
+</body>
+</html>
